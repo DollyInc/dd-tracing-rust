@@ -1,0 +1,155 @@
+use std::{thread, sync::{Mutex, atomic::{AtomicUsize, Ordering}}, collections::HashMap, cell::RefCell};
+use slog::Drain;
+use super::{event::Event, span::Span};
+
+// Tracks the currently executing span on a per-thread basis.
+// adapted from https://github.com/tokio-rs/tracing/blob/master/examples/examples/sloggish/sloggish_subscriber.rs
+#[derive(Clone)]
+struct CurrentSpanPerThread {
+  current: &'static thread::LocalKey<RefCell<Vec<tracing::Id>>>,
+}
+
+impl CurrentSpanPerThread {
+  pub fn new() -> Self {
+    thread_local! {
+      static CURRENT: RefCell<Vec<tracing::Id>> = RefCell::new(vec![]);
+    };
+    Self { current: &CURRENT }
+  }
+
+  // Returns the id of the span in which the current thread is
+  // executing, or `None` if it is not inside of a span.
+  pub fn id(&self) -> Option<tracing::Id> {
+    self.current
+      .with(|current| current.borrow().last().cloned())
+  }
+
+  pub fn enter(&self, span: tracing::Id) {
+    self.current.with(|current| {
+      current.borrow_mut().push(span);
+    })
+  }
+
+  pub fn exit(&self) {
+    self.current.with(|current| {
+      let _ = current.borrow_mut().pop();
+    })
+  }
+}
+
+pub struct Collector {
+  level: tracing::Level,
+  spans: Mutex<HashMap<tracing::Id, Span>>,
+  traces: Mutex<HashMap<u64, Vec<tracing::Id>>>,
+  current: CurrentSpanPerThread,
+  span_id: AtomicUsize,
+  trace_id: AtomicUsize,
+  logger: slog::Logger,
+  dd_client: datadog_apm::Client
+}
+
+impl Collector {
+  pub fn new(level: tracing::Level, config: datadog_apm::Config) -> Self {
+    let drain = slog_json::Json::new(std::io::stdout())
+      .add_default_keys()
+      .build().fuse();
+    let drain = slog_async::Async::new(drain).build().fuse();
+    let logger = slog::Logger::root(drain, o!("version" => "v1"));
+    Self {
+      level,
+      spans: Mutex::new(HashMap::new()),
+      traces: Mutex::new(HashMap::new()),
+      span_id: AtomicUsize::new(1),
+      trace_id: AtomicUsize::new(1),
+      current: CurrentSpanPerThread::new(),
+      logger: logger.new(o!()),
+      dd_client: datadog_apm::Client::new(config)
+    }
+  }
+}
+
+impl tracing::Subscriber for Collector {
+  fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
+    *metadata.level() >= self.level
+  }
+  fn new_span(&self, span: &tracing::span::Attributes<'_>) -> tracing::Id {
+    //let id = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
+    let parent = self.current.id();
+    let mut spans = self.spans.lock().unwrap();
+    let trace_id = parent.as_ref().map(|parent_id| 
+      spans.get(parent_id).map(|parent_span| parent_span.trace_id)
+    ).flatten().unwrap_or_else(|| {
+      self.trace_id.fetch_add(1, Ordering::SeqCst) as u64
+    });
+    let mut traces = self.traces.lock().unwrap();
+    let trace_spans = traces.entry(trace_id)
+      .or_insert_with(|| vec![]);
+    let span_id = self.span_id.fetch_add(1, Ordering::SeqCst) as u64;
+    let span_id = tracing::Id::from_u64(span_id);
+    let span = Span::new(parent, trace_id, span);
+    spans.insert(span_id.clone(), span);
+    trace_spans.push(span_id.clone());
+    span_id
+  }
+  fn record(&self, span_id: &tracing::Id, values: &tracing::span::Record<'_>) {
+    self.spans.lock().unwrap().get_mut(span_id)
+      .map(|span| values.record(span));
+  }
+  fn record_follows_from(&self, _span: &tracing::Id, _follows: &tracing::Id) {
+    // unimplemented
+  }
+  fn event(&self, event: &tracing::Event<'_>) {
+    // event should have a parent span
+    if let Some(parent_id) = self.current.id() {
+      if let Some(parent) = self.spans.lock().unwrap().get(&parent_id) {
+        let metadata = event.metadata();
+        let mut ev = Event::new(metadata.target(), parent.name(), parent_id.into_u64(), parent.trace_id);
+        event.record(&mut ev);
+        //ev.set_if_missing("function", parent.name());
+        ev.log(metadata.level(), &self.logger);
+      }
+    }
+  }
+  fn enter(&self, span_id: &tracing::Id) {
+    self.current.enter(span_id.clone());
+    // set time when first entering the span
+    self.spans.lock().unwrap()
+      .get_mut(span_id).map(|span| span.set_time());
+  }
+  fn exit(&self, _span_id: &tracing::Id) {
+    self.current.exit();
+  }
+  fn clone_span(&self, span_id: &tracing::Id) -> tracing::Id {
+    self.spans.lock().unwrap()
+      .get_mut(span_id).map(|span| span.increment_handlers());
+    span_id.clone()
+  }
+  fn try_close(&self, span_id: tracing::Id) -> bool {
+    let mut spans = self.spans.lock().unwrap();
+    if let Some(span) = spans.get_mut(&span_id) {
+      span.decrement_handlers();
+      if span.is_closed() {
+        span.set_duration();
+        if span.parent == None { // if closing a parent, its trace is done
+          let mut traces = self.traces.lock().unwrap();
+          let trace_id = span.trace_id;
+          if let Some(trace) = traces.remove(&trace_id) {
+            let trace_spans: Vec<datadog_apm::Span> = trace.into_iter().filter_map(|span_id| 
+              spans.remove(&span_id).map(|span| Span::into(span_id, span))
+            ).collect();
+            let trace = datadog_apm::Trace {
+              id: trace_id,
+              priority: 1,
+              spans: trace_spans
+            };
+            let client = self.dd_client.clone();
+            client.send_trace(trace);
+            println!("sent trace");
+          }
+        }
+        return true
+      }
+    }
+    false
+  }
+}

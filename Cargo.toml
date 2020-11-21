@@ -1,0 +1,16 @@
+[package]
+name = "dd-tracing"
+version = "0.1.0"
+authors = ["Nick Etzel <njetzel2@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+datadog-apm = "0.2"
+serde_json = "1.0.48"
+slog = "2.5.2"
+slog-async = "2.5.0"
+slog-json = "2.3.0"
+tokio = { version = "0.2", features = ["full"] }
+tracing = "0.1"
