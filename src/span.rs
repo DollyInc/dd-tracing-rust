@@ -22,7 +22,6 @@ impl SpanData {
 #[derive(Debug)]
 pub struct Span {
   pub parent: Option<tracing::Id>,
-  //children: Vec<tracing::Id>,
   pub trace_id: u64,
   handlers: u64,
   data: SpanData

@@ -73,7 +73,6 @@ impl tracing::Subscriber for Collector {
     *metadata.level() >= self.level
   }
   fn new_span(&self, span: &tracing::span::Attributes<'_>) -> tracing::Id {
-    //let id = self.ids.fetch_add(1, Ordering::SeqCst) as u64;
     let parent = self.current.id();
     let mut spans = self.spans.lock().unwrap();
     let trace_id = parent.as_ref().map(|parent_id| 
@@ -105,7 +104,6 @@ impl tracing::Subscriber for Collector {
         let metadata = event.metadata();
         let mut ev = Event::new(metadata.target(), parent.name(), parent_id.into_u64(), parent.trace_id);
         event.record(&mut ev);
-        //ev.set_if_missing("function", parent.name());
         ev.log(metadata.level(), &self.logger);
       }
     }
