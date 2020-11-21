@@ -1,5 +1,5 @@
 # dd_tracing
-This is a `tracing` subscriber that collects traces and sends them to the datadog APM.
+This is a `tracing` subscriber (see https://docs.rs/tracing) that collects traces and sends them to the datadog APM.
 
 ## Example setup
 ```

@@ -142,7 +142,6 @@ impl tracing::Subscriber for Collector {
             };
             let client = self.dd_client.clone();
             client.send_trace(trace);
-            println!("sent trace");
           }
         }
         return true
