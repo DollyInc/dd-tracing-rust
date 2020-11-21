@@ -25,8 +25,8 @@ impl Event {
     let kv = o!(
       "event" => self.event.as_str(),
       "function" => self.function.as_str(),
-      "span_id" => self.span_id,
-      "trace_id" => self.trace_id
+      "spanId" => self.span_id,
+      "traceId" => self.trace_id
     );
     let message = serde_json::to_string(&self.data).unwrap_or_default();
     match *level {

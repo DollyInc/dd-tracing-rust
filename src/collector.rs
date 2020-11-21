@@ -132,7 +132,7 @@ impl tracing::Subscriber for Collector {
           let mut traces = self.traces.lock().unwrap();
           let trace_id = span.trace_id;
           if let Some(trace) = traces.remove(&trace_id) {
-            let trace_spans: Vec<datadog_apm::Span> = trace.into_iter().filter_map(|span_id| 
+            let trace_spans = trace.into_iter().filter_map(|span_id| 
               spans.remove(&span_id).map(|span| Span::into(span_id, span))
             ).collect();
             let trace = datadog_apm::Trace {
