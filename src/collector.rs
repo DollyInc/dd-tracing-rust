@@ -150,9 +150,8 @@ impl tracing::Subscriber for Collector {
               priority: 1,
               spans: trace_spans
             };
-            println!("tr {:#?}", trace);
-            //let client = self.dd_client.clone();
-            //client.send_trace(trace);
+            let client = self.dd_client.clone();
+            client.send_trace(trace);
           }
         }
         return true
