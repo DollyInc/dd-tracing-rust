@@ -36,7 +36,9 @@ impl Event {
     match *level {
       tracing::Level::ERROR => error!(logger, "{}", message; o!(kv, "status" => "error")),
       tracing::Level::WARN => warn!(logger, "{}", message; o!(kv, "status" => "warn")),
-      _ => info!(logger, "{}", message; o!(kv, "status" => "info"))
+      tracing::Level::INFO => info!(logger, "{}", message; o!(kv, "status" => "info")),
+      tracing::Level::DEBUG => debug!(logger, "{}", message; o!(kv, "status" => "debug")),
+      tracing::Level::TRACE => trace!(logger, "{}", message; o!(kv, "status" => "trace"))
     }
   }
 }
