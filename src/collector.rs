@@ -43,28 +43,43 @@ pub struct Collector {
   traces: Mutex<HashMap<u64, Vec<tracing::Id>>>,
   current: CurrentSpanPerThread,
   span_id: AtomicU64,
-  trace_id: AtomicU64,
   logger: slog::Logger,
   dd_client: datadog_apm::Client
 }
 
 impl Collector {
-  pub fn new(level: tracing::Level, config: datadog_apm::Config) -> Self {
+  pub fn new(level: tracing::Level, version: String, config: datadog_apm::Config) -> Self {
     let drain = slog_json::Json::new(std::io::stdout())
       .add_default_keys()
       .build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
-    let logger = slog::Logger::root(drain, o!("version" => "v1"));
+    let logger = if let Some(env) = config.env.as_ref() {
+      slog::Logger::root(drain, 
+        o!("dd.service" => config.service.to_owned(), "dd.version" => version, "dd.env" => env.to_owned())
+      )
+    }
+    else {
+      slog::Logger::root(drain, 
+        o!("dd.service" => config.service.to_owned(), "dd.version" => version)
+      )
+    };
     Self {
       level,
       spans: Mutex::new(HashMap::new()),
       traces: Mutex::new(HashMap::new()),
       span_id: AtomicU64::new(1),
-      trace_id: AtomicU64::new(1),
       current: CurrentSpanPerThread::new(),
-      logger: logger.new(o!()),
+      logger,
       dd_client: datadog_apm::Client::new(config)
     }
+  }
+
+  fn get_next_span_id(&self) -> u64 {
+    self.span_id.fetch_add(1, Ordering::SeqCst)
+  }
+
+  fn get_next_trace_id(&self) -> u64 {
+    rand::random()
   }
 }
 
@@ -78,12 +93,12 @@ impl tracing::Subscriber for Collector {
     let trace_id = parent.as_ref().map(|parent_id| 
       spans.get(parent_id).map(|parent_span| parent_span.trace_id)
     ).flatten().unwrap_or_else(|| {
-      self.trace_id.fetch_add(1, Ordering::SeqCst)
+      self.get_next_trace_id()
     });
     let mut traces = self.traces.lock().unwrap();
     let trace_spans = traces.entry(trace_id)
       .or_insert_with(|| vec![]);
-    let span_id = self.span_id.fetch_add(1, Ordering::SeqCst);
+    let span_id = self.get_next_span_id();
     let span_id = tracing::Id::from_u64(span_id);
     let span = Span::new(parent, trace_id, span);
     spans.insert(span_id.clone(), span);
@@ -139,6 +154,7 @@ impl tracing::Subscriber for Collector {
       if span.is_closed() {
         span.set_duration();
         if span.parent == None { // if closing a parent, its trace is done
+          // todo clear the current stack just in case?
           let mut traces = self.traces.lock().unwrap();
           let trace_id = span.trace_id;
           if let Some(trace) = traces.remove(&trace_id) {

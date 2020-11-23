@@ -4,8 +4,8 @@ use std::{collections::HashMap, fmt::Debug};
 pub struct Event {
   event: String,
   function: String,
-  span_id: u64,
-  trace_id: u64,
+  span_id: String,
+  trace_id: String,
   data: HashMap<String, String>
 }
 
@@ -15,8 +15,8 @@ impl Event {
       // event and function are overridden in record_str with values passed to the event macro
       event: event.to_string(),
       function: function.to_string(),
-      span_id,
-      trace_id,
+      span_id: span_id.to_string(),
+      trace_id: trace_id.to_string(),
       ..Self::default()
     }
   }
@@ -28,11 +28,10 @@ impl Event {
     let kv = o!(
       "event" => self.event.as_str(),
       "function" => self.function.as_str(),
-      "span_id" => self.span_id,
-      "trace_id" => self.trace_id
+      "dd.span_id" => self.span_id.as_str(),
+      "dd.trace_id" => self.trace_id.as_str()
     );
     let message = serde_json::to_string(&self.data).unwrap_or_default();
-    //todo respect trace/debug levels
     match *level {
       tracing::Level::ERROR => error!(logger, "{}", message; o!(kv, "status" => "error")),
       tracing::Level::WARN => warn!(logger, "{}", message; o!(kv, "status" => "warn")),
