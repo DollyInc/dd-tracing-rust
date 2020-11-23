@@ -36,6 +36,9 @@ impl Span {
     attrs.record(&mut span);
     span
   }
+  pub fn set_tag(&mut self, name: String, value: String) {
+    self.data.tags.insert(name, value);
+  }
   pub fn set_time(&mut self) {
     if self.data.start == None {
       self.data.start = Some(SystemTime::now())

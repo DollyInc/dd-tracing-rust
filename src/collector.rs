@@ -70,7 +70,7 @@ impl Collector {
 
 impl tracing::Subscriber for Collector {
   fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
-    *metadata.level() >= self.level
+    *metadata.level() <= self.level
   }
   fn new_span(&self, span: &tracing::span::Attributes<'_>) -> tracing::Id {
     let parent = self.current.id();
@@ -100,11 +100,21 @@ impl tracing::Subscriber for Collector {
   fn event(&self, event: &tracing::Event<'_>) {
     // event should have a parent span
     if let Some(parent_id) = self.current.id() {
-      if let Some(parent) = self.spans.lock().unwrap().get(&parent_id) {
+      if let Some(parent) = self.spans.lock().unwrap().get_mut(&parent_id) {
         let metadata = event.metadata();
         let mut ev = Event::new(metadata.target(), parent.name(), parent_id.into_u64(), parent.trace_id);
         event.record(&mut ev);
-        ev.log(metadata.level(), &self.logger);
+        let level = metadata.level();
+        ev.log(level, &self.logger);
+
+        // if event is an error, propagate its info to containing span
+        if *level <= tracing::Level::WARN {
+          for (key, value) in ev.data() {
+            if key.starts_with("error") {
+              parent.set_tag(key.to_owned(), value.to_owned())
+            }
+          }
+        }
       }
     }
   }
@@ -140,8 +150,9 @@ impl tracing::Subscriber for Collector {
               priority: 1,
               spans: trace_spans
             };
-            let client = self.dd_client.clone();
-            client.send_trace(trace);
+            println!("tr {:#?}", trace);
+            //let client = self.dd_client.clone();
+            //client.send_trace(trace);
           }
         }
         return true
