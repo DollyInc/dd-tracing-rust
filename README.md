@@ -9,7 +9,14 @@ This is a `tracing` subscriber (see https://docs.rs/tracing) that collects trace
     host: "localhost".to_string(),
     ..Default::default()
   };
-  let my_subscriber = dd_tracing::Collector::new(tracing::Level::INFO, dd_config);
-  tracing::subscriber::set_global_default(my_subscriber)
+  let collector = dd_tracing::Collector::new(tracing::Level::INFO,  "0.1".to_string(), dd_config);
+  tracing::subscriber::set_global_default(collector)
     .unwrap();
+
+  // create a span whenever foo is called
+  [#tracing::instrument(level = "info")]
+  async fn foo() {
+    //create an event inside the span
+    tracing::info!(event = "bar");
+  }
 ```

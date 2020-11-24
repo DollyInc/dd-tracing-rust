@@ -44,11 +44,12 @@ pub struct Collector {
   current: CurrentSpanPerThread,
   span_id: AtomicU64,
   logger: slog::Logger,
-  dd_client: datadog_apm::Client
+  dd_client: datadog_apm::Client,
+  prefix: &'static str
 }
 
 impl Collector {
-  pub fn new(level: tracing::Level, version: String, config: datadog_apm::Config) -> Self {
+  pub fn new(level: tracing::Level, prefix: &'static str, version: &'static str, config: datadog_apm::Config) -> Self {
     let drain = slog_json::Json::new(std::io::stdout())
       .add_default_keys()
       .build().fuse();
@@ -70,7 +71,8 @@ impl Collector {
       span_id: AtomicU64::new(1),
       current: CurrentSpanPerThread::new(),
       logger,
-      dd_client: datadog_apm::Client::new(config)
+      dd_client: datadog_apm::Client::new(config),
+      prefix
     }
   }
 
@@ -85,7 +87,8 @@ impl Collector {
 
 impl tracing::Subscriber for Collector {
   fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
-    *metadata.level() <= self.level
+    *metadata.level() <= self.level 
+      && metadata.target().starts_with(self.prefix)
   }
   fn new_span(&self, span: &tracing::span::Attributes<'_>) -> tracing::Id {
     let parent = self.current.id();
@@ -166,6 +169,7 @@ impl tracing::Subscriber for Collector {
               priority: 1,
               spans: trace_spans
             };
+
             let client = self.dd_client.clone();
             client.send_trace(trace);
           }
