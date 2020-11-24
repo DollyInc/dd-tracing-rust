@@ -116,21 +116,24 @@ impl tracing::Subscriber for Collector {
     // unimplemented
   }
   fn event(&self, event: &tracing::Event<'_>) {
-    // event should have a parent span
-    if let Some(parent_id) = self.current.id() {
-      if let Some(parent) = self.spans.lock().unwrap().get_mut(&parent_id) {
-        let metadata = event.metadata();
-        let mut ev = Event::new(metadata.target(), parent.name(), parent_id.into_u64(), parent.trace_id);
-        event.record(&mut ev);
-        let level = metadata.level();
-        ev.log(level, &self.logger);
+    let parent_id = self.current.id();
+    let mut spans = self.spans.lock().unwrap();
+    // Option<Span>
+    let parent = parent_id.as_ref().map(|p| spans.get_mut(p)).flatten();
+    let metadata = event.metadata();
+    let parent_ref = parent.as_ref();
+    let mut ev = Event::new(metadata.target(), parent_ref.map(|p| p.name()), 
+      parent_id.map(|p| p.into_u64()), parent_ref.map(|p| p.trace_id));
+    event.record(&mut ev);
+    let level = metadata.level();
+    ev.log(level, &self.logger);
 
-        // if event is an error, propagate its info to containing span
-        if *level <= tracing::Level::WARN {
-          for (key, value) in ev.data() {
-            if key.starts_with("error") {
-              parent.set_tag(key.to_owned(), value.to_owned())
-            }
+    // if event is an error, propagate its info to containing span
+    if let Some(parent) = parent {
+      if *level <= tracing::Level::WARN {
+        for (key, value) in ev.data() {
+          if key.starts_with("error") {
+            parent.set_tag(key.to_owned(), value.to_owned())
           }
         }
       }

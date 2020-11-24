@@ -10,13 +10,13 @@ pub struct Event {
 }
 
 impl Event {
-  pub fn new(event: &str, function: &str, span_id: u64, trace_id: u64) -> Self {
+  pub fn new(event: &str, function: Option<&str>, span_id: Option<u64>, trace_id: Option<u64>) -> Self {
     Self {
       // event and function are overridden in record_str with values passed to the event macro
       event: event.to_string(),
-      function: function.to_string(),
-      span_id: span_id.to_string(),
-      trace_id: trace_id.to_string(),
+      function: function.map(|f| f.to_string()).unwrap_or_default(),
+      span_id: span_id.map(|s| s.to_string()).unwrap_or_default(),
+      trace_id: trace_id.map(|t| t.to_string()).unwrap_or_default(),
       ..Self::default()
     }
   }
