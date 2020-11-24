@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug, time::{SystemTime, UNIX_EPOCH}};
 
 #[derive(Default)]
 pub struct Event {
@@ -25,11 +25,14 @@ impl Event {
   }
   // todo event metadata
   pub fn log(&self, level: &tracing::Level, logger: &slog::Logger) {
+    let time = SystemTime::now().duration_since(UNIX_EPOCH)
+      .unwrap_or_default().as_millis();
     let kv = o!(
       "event" => self.event.as_str(),
       "function" => self.function.as_str(),
       "dd.span_id" => self.span_id.as_str(),
-      "dd.trace_id" => self.trace_id.as_str()
+      "dd.trace_id" => self.trace_id.as_str(),
+      "metadata.time" => time
     );
     let message = serde_json::to_string(&self.data).unwrap_or_default();
     match *level {

@@ -49,19 +49,20 @@ pub struct Collector {
 }
 
 impl Collector {
-  pub fn new(level: tracing::Level, prefix: &'static str, version: &'static str, config: datadog_apm::Config) -> Self {
+  pub fn new(level: tracing::Level, prefix: &'static str, version: &'static str, environment: &'static str, image: &'static str, config: datadog_apm::Config) -> Self {
     let drain = slog_json::Json::new(std::io::stdout())
-      .add_default_keys()
       .build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
     let logger = if let Some(env) = config.env.as_ref() {
       slog::Logger::root(drain, 
-        o!("dd.service" => config.service.to_owned(), "dd.version" => version, "dd.env" => env.to_owned())
+        o!("dd.service" => config.service.to_owned(), "dd.version" => version, "dd.env" => env.to_owned(),
+          "metadata.environment" => environment, "metadata.image" => image)
       )
     }
     else {
       slog::Logger::root(drain, 
-        o!("dd.service" => config.service.to_owned(), "dd.version" => version)
+        o!("dd.service" => config.service.to_owned(), "dd.version" => version, 
+          "metadata.environment" => environment, "metadata.image" => image)
       )
     };
     Self {
