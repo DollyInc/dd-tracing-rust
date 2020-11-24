@@ -1,7 +1,9 @@
 # dd_tracing
 This is a `tracing` subscriber (see https://docs.rs/tracing) that collects traces and sends them to the datadog APM.
 
-Events that are created using the `tracing::event` macros are automatically linked to their enclosing span and are logged in JSON format. Fields named `event` and `function` are top-level fields; any other fields are logged in JSON format under `msg`. For instance, `tracing::info!(event = "EventHappened", function = "doEvent", request_id = "000", a = 1, b = "b")` would write the log ```
+Events that are created using the `tracing::event` macros are automatically linked to their enclosing span and are logged in JSON format. Fields named `event` and `function` are top-level fields; any other fields are logged in JSON format under `msg`. For instance, `tracing::info!(event = "EventHappened", function = "doEvent", request_id = "000", a = 1, b = "b")` would write the log 
+
+```
 {
   "event": "ThingHappened",
   "function": "doEvent",
@@ -13,6 +15,8 @@ Events that are created using the `tracing::event` macros are automatically link
   }
 }
 ```
+
+The collector requires a `tracing::Level` and `prefix` to use for filtering spans and events. Spans and events that do not match the minimum level or have a `target` that does not start with the `prefix` are filtered out. The `target` is typically the module path, but it can also be set explicitly when a span or event is constructed.
 
 ## Example setup
 ```
