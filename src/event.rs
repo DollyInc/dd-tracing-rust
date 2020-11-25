@@ -36,11 +36,11 @@ impl Event {
     );
     let message = serde_json::to_string(&self.data).unwrap_or_default();
     match *level {
-      tracing::Level::ERROR => error!(logger, "{}", message; o!(kv, "status" => "error")),
-      tracing::Level::WARN => warn!(logger, "{}", message; o!(kv, "status" => "warn")),
-      tracing::Level::INFO => info!(logger, "{}", message; o!(kv, "status" => "info")),
-      tracing::Level::DEBUG => debug!(logger, "{}", message; o!(kv, "status" => "debug")),
-      tracing::Level::TRACE => trace!(logger, "{}", message; o!(kv, "status" => "trace"))
+      tracing::Level::ERROR => error!(logger, ""; o!(kv, "status" => "error", "message" => message)),
+      tracing::Level::WARN => warn!(logger, ""; o!(kv, "status" => "warn", "message" => message)),
+      tracing::Level::INFO => info!(logger, ""; o!(kv, "status" => "info", "message" => message)),
+      tracing::Level::DEBUG => debug!(logger, ""; o!(kv, "status" => "debug", "message" => message)),
+      tracing::Level::TRACE => trace!(logger, ""; o!(kv, "status" => "trace", "message" => message))
     }
   }
 }
