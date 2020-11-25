@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug, time::{SystemTime, UNIX_EPOCH}};
 
 #[derive(Default)]
 pub struct Event {
@@ -10,13 +10,13 @@ pub struct Event {
 }
 
 impl Event {
-  pub fn new(event: &str, function: &str, span_id: u64, trace_id: u64) -> Self {
+  pub fn new(event: &str, function: Option<&str>, span_id: Option<u64>, trace_id: Option<u64>) -> Self {
     Self {
       // event and function are overridden in record_str with values passed to the event macro
       event: event.to_string(),
-      function: function.to_string(),
-      span_id: span_id.to_string(),
-      trace_id: trace_id.to_string(),
+      function: function.map(|f| f.to_string()).unwrap_or_default(),
+      span_id: span_id.map(|s| s.to_string()).unwrap_or_default(),
+      trace_id: trace_id.map(|t| t.to_string()).unwrap_or_default(),
       ..Self::default()
     }
   }
@@ -25,19 +25,22 @@ impl Event {
   }
   // todo event metadata
   pub fn log(&self, level: &tracing::Level, logger: &slog::Logger) {
+    let time = SystemTime::now().duration_since(UNIX_EPOCH)
+      .unwrap_or_default().as_millis();
     let kv = o!(
       "event" => self.event.as_str(),
       "function" => self.function.as_str(),
       "dd.span_id" => self.span_id.as_str(),
-      "dd.trace_id" => self.trace_id.as_str()
+      "dd.trace_id" => self.trace_id.as_str(),
+      "metadata.time" => time
     );
     let message = serde_json::to_string(&self.data).unwrap_or_default();
     match *level {
-      tracing::Level::ERROR => error!(logger, "{}", message; o!(kv, "status" => "error")),
-      tracing::Level::WARN => warn!(logger, "{}", message; o!(kv, "status" => "warn")),
-      tracing::Level::INFO => info!(logger, "{}", message; o!(kv, "status" => "info")),
-      tracing::Level::DEBUG => debug!(logger, "{}", message; o!(kv, "status" => "debug")),
-      tracing::Level::TRACE => trace!(logger, "{}", message; o!(kv, "status" => "trace"))
+      tracing::Level::ERROR => error!(logger, ""; o!(kv, "status" => "error", "message" => message)),
+      tracing::Level::WARN => warn!(logger, ""; o!(kv, "status" => "warn", "message" => message)),
+      tracing::Level::INFO => info!(logger, ""; o!(kv, "status" => "info", "message" => message)),
+      tracing::Level::DEBUG => debug!(logger, ""; o!(kv, "status" => "debug", "message" => message)),
+      tracing::Level::TRACE => trace!(logger, ""; o!(kv, "status" => "trace", "message" => message))
     }
   }
 }

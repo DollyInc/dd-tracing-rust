@@ -1,17 +1,29 @@
 # dd_tracing
-This is a `tracing` subscriber (see https://docs.rs/tracing) that collects traces and sends them to the datadog APM.
+This is a `tracing` subscriber (see https://docs.rs/tracing) that collects traces and sends them to the datadog APM. The `Collector` struct implements the `tracing::Subscriber` trait.
 
-Events that are created using the `tracing::event` macros are automatically linked to their enclosing span and are logged in JSON format. Fields named `event` and `function` are top-level fields; any other fields are logged in JSON format under `msg`. For instance, `tracing::info!(event = "EventHappened", function = "doEvent", request_id = "000", a = 1, b = "b")` would write the log 
+Events that are created using the `tracing::event` macros are automatically linked to their enclosing span and are logged in JSON format, following the standardized platform logging format. Fields named `event` and `function` are top-level fields; any other fields are logged in JSON format under `message`. Dd and metadata fields that are passed to the `Collector` constructor are also passed through to the event logs. For instance, `tracing::info!(event = "EventHappened", function = "doEvent", request_id = "000", a = 1, b = "b")` would write the log
 
 ```
 {
   "event": "EventHappened",
   "function": "doEvent",
   "status": "info",
-  "msg": { 
+  "message": { 
     "request_id": "000",
     "a": "1",
     "b": "b"
+  },
+  "dd": {
+    "env": ...
+    "service": ...
+    "version": ...
+    "span_id": ...
+    "trace_id": ...
+  },
+  "metadata": {
+    "environment": ...,
+    "image": ...,
+    "time": ...
   }
 }
 ```
@@ -22,13 +34,15 @@ The collector requires a `tracing::Level` and `prefix` to use for filtering span
 
 ## Example setup
 ```
+  // configure the dd agent info
   let dd_config = dd_tracing::Config {
     env: None,
     service: "hello".to_string(),
     host: "localhost".to_string(),
     ..Default::default()
   };
-  let collector = dd_tracing::Collector::new(tracing::Level::INFO, "hello", "0.1".to_string(), dd_config);
+  // configure the subscriber
+  let collector = dd_tracing::Collector::new(tracing::Level::INFO, "hello", "0.1".to_string(), "env", "image", dd_config);
   tracing::subscriber::set_global_default(collector)
     .unwrap();
 
