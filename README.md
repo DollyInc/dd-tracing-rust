@@ -32,19 +32,23 @@ Error events are automatically propagated to their parent span. If an error even
 
 The collector requires a `tracing::Level` and `prefix` to use for filtering spans and events. Spans and events that do not match the minimum level or have a `target` that does not start with the `prefix` are filtered out. The `target` is typically the module path, but it can also be set explicitly when a span or event is constructed.
 
+The `Config` struct is set up to work with the `config` crate, and has a function `create_global_subscriber` that can be called to start the subscriber.
+
 ## Example setup
 ```
-  // configure the dd agent info
-  let dd_config = dd_tracing::Config {
-    env: None,
-    service: "hello".to_string(),
-    host: "localhost".to_string(),
+  // set up config, or load from environment via config crate
+  let config = Config {
+    level: "info".to_string(),
+    prefix: "foo".to_string(),
+    dd: Dd {
+      service: "foo".to_string(),
+      env: "dev".to_string(),
+      ..Default::default()
+    }
     ..Default::default()
   };
   // configure the subscriber
-  let collector = dd_tracing::Collector::new(tracing::Level::INFO, "hello", "0.1".to_string(), "env", "image", dd_config);
-  tracing::subscriber::set_global_default(collector)
-    .unwrap();
+  config.create_global_subscriber();
 
   // create a span whenever foo is called
   [#tracing::instrument(level = "info")]

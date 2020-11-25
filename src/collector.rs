@@ -1,6 +1,7 @@
-use std::{thread, sync::{Mutex, atomic::{AtomicU64, Ordering}}, collections::HashMap, cell::RefCell};
+use std::{thread, str::FromStr, collections::HashMap,
+  sync::{Mutex, atomic::{AtomicU64, Ordering}}, cell::RefCell};
 use slog::Drain;
-use super::{event::Event, span::Span};
+use super::{event::Event, span::Span, Config};
 
 // Tracks the currently executing span on a per-thread basis.
 // adapted from https://github.com/tokio-rs/tracing/blob/master/examples/examples/sloggish/sloggish_subscriber.rs
@@ -37,43 +38,51 @@ impl CurrentSpanPerThread {
   }
 }
 
+impl Config {
+  pub fn create_global_subscriber(&self) {
+    let collector = Collector::new(self);
+    tracing::subscriber::set_global_default(collector)
+      .expect("setting tracing default failed");
+  }
+}
+
 pub struct Collector {
   level: tracing::Level,
+  prefix: String,
   spans: Mutex<HashMap<tracing::Id, Span>>,
   traces: Mutex<HashMap<u64, Vec<tracing::Id>>>,
   current: CurrentSpanPerThread,
   span_id: AtomicU64,
   logger: slog::Logger,
   dd_client: datadog_apm::Client,
-  prefix: &'static str
 }
 
 impl Collector {
-  pub fn new(level: tracing::Level, prefix: &'static str, version: &'static str, environment: &'static str, image: &'static str, config: datadog_apm::Config) -> Self {
+  pub fn new(config: &Config) -> Self {
+    let level = tracing::Level::from_str(&config.level).expect("invalid level");
     let drain = slog_json::Json::new(std::io::stdout())
       .build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
-    let logger = if let Some(env) = config.env.as_ref() {
-      slog::Logger::root(drain, 
-        o!("dd.service" => config.service.to_owned(), "dd.version" => version, "dd.env" => env.to_owned(),
-          "metadata.environment" => environment, "metadata.image" => image)
-      )
-    }
-    else {
-      slog::Logger::root(drain, 
-        o!("dd.service" => config.service.to_owned(), "dd.version" => version, 
-          "metadata.environment" => environment, "metadata.image" => image)
-      )
+    let logger = slog::Logger::root(drain, 
+      o!("dd.service" => config.dd.service.clone(), "dd.version" => config.dd.version.clone(), "dd.env" => config.dd.env.clone(),
+        "metadata.environment" => config.metadata.env.clone(), "metadata.image" => config.metadata.image.clone())
+    );
+    let dd_apm_config = datadog_apm::Config {
+      env: Some(config.dd.env.clone()),
+      service: config.dd.service.clone(),
+      host: config.dd.host.clone(),
+      port: config.dd.port.clone(),
+      ..Default::default()
     };
     Self {
       level,
+      prefix: config.prefix.clone(),
       spans: Mutex::new(HashMap::new()),
       traces: Mutex::new(HashMap::new()),
       span_id: AtomicU64::new(1),
       current: CurrentSpanPerThread::new(),
       logger,
-      dd_client: datadog_apm::Client::new(config),
-      prefix
+      dd_client: datadog_apm::Client::new(dd_apm_config)
     }
   }
 
@@ -89,7 +98,7 @@ impl Collector {
 impl tracing::Subscriber for Collector {
   fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
     *metadata.level() <= self.level 
-      && metadata.target().starts_with(self.prefix)
+      && metadata.target().starts_with(&self.prefix)
   }
   fn new_span(&self, span: &tracing::span::Attributes<'_>) -> tracing::Id {
     let parent = self.current.id();
