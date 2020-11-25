@@ -42,7 +42,7 @@ impl Config {
   pub fn create_global_subscriber(&self) {
     let collector = Collector::new(self);
     tracing::subscriber::set_global_default(collector)
-      .expect("setting tracing default failed")
+      .expect("setting tracing default failed");
   }
 }
 

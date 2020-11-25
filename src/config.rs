@@ -34,7 +34,7 @@ fn default_host() -> String {
 }
 
 fn default_port() -> String {
-  "port".to_string()
+  "8126".to_string()
 }
 
 fn default_level() -> String {
