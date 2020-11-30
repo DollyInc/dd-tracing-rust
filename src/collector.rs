@@ -64,7 +64,7 @@ pub struct Collector {
 impl Collector {
   pub fn new(config: &Config) -> Self {
     config.validate().unwrap();
-    let level = tracing::Level::from_str(&config.level).expect("invalid level");
+    let level = tracing::Level::from_str(&config.level).expect("Invalid level.");
     let drain = slog_json::Json::new(std::io::stdout())
       .build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
