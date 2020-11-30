@@ -25,8 +25,28 @@ pub struct Config {
   #[serde(default = "default_level")]
   pub level: String,
   pub prefix: String,
+  #[serde(default = "default_sample_rate")]
+  pub sample_rate: f32,
   pub metadata: Metadata,
   pub dd: Dd
+}
+
+impl Config {
+  pub fn validate(&self) -> Result<(), &'static str> {
+    if self.level.is_empty() {
+      return Err("Invalid level.")
+    }
+    if self.sample_rate < 0f32 || self.sample_rate > 1f32 {
+      return Err("Invalid sample rate.")
+    }
+    if self.dd.host.is_empty() {
+      return Err("Invalid host.")
+    }
+    if self.dd.port.is_empty() {
+      return Err("Invalid port.")
+    }
+    Ok(())
+  }
 }
 
 fn default_host() -> String {
@@ -39,4 +59,8 @@ fn default_port() -> String {
 
 fn default_level() -> String {
   "info".to_string()
+}
+
+fn default_sample_rate() -> f32 {
+  1f32
 }
