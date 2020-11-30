@@ -46,6 +46,9 @@ impl Config {
   }
 }
 
+const AUTO_REJECT: u32 = 0;
+const AUTO_KEEP: u32 = 1;
+
 pub struct Collector {
   level: tracing::Level,
   prefix: String,
@@ -55,11 +58,13 @@ pub struct Collector {
   span_id: AtomicU64,
   logger: slog::Logger,
   dd_client: datadog_apm::Client,
+  sample_rate: f32
 }
 
 impl Collector {
   pub fn new(config: &Config) -> Self {
-    let level = tracing::Level::from_str(&config.level).expect("invalid level");
+    config.validate().unwrap();
+    let level = tracing::Level::from_str(&config.level).expect("Invalid level.");
     let drain = slog_json::Json::new(std::io::stdout())
       .build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
@@ -82,6 +87,7 @@ impl Collector {
       span_id: AtomicU64::new(1),
       current: CurrentSpanPerThread::new(),
       logger,
+      sample_rate: config.sample_rate,
       dd_client: datadog_apm::Client::new(dd_apm_config)
     }
   }
@@ -92,6 +98,16 @@ impl Collector {
 
   fn get_next_trace_id(&self) -> u64 {
     rand::random()
+  }
+
+  fn sample(&self) -> u32 {
+    let val: f32 = rand::random();
+    if val > self.sample_rate {
+      AUTO_REJECT
+    }
+    else {
+      AUTO_KEEP
+    }
   }
 }
 
@@ -179,12 +195,11 @@ impl tracing::Subscriber for Collector {
             ).collect();
             let trace = datadog_apm::Trace {
               id: trace_id,
-              priority: 1,
+              priority: self.sample(),
               spans: trace_spans
             };
-
             let client = self.dd_client.clone();
-            client.send_trace(trace);
+            client.send_trace(trace);     
           }
         }
         return true
