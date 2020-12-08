@@ -79,20 +79,6 @@ dependencies = [
 [[package]]
 name = "datadog-apm"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "497ed660783c56547c0083e009eb232cf37d92a4e794b3214582e5603e36ffc6"
-dependencies = [
- "hyper",
- "log",
- "rmp",
- "rmp-serde",
- "serde",
- "tokio 0.2.23",
-]
-
-[[package]]
-name = "datadog-apm"
-version = "0.2.0"
 source = "git+https://github.com/DollyInc/datadog-apm-rust.git?branch=main#3d0cb931ebd65b6e6a6d1c4742d4ba592205d129"
 dependencies = [
  "hyper",
@@ -107,23 +93,7 @@ dependencies = [
 name = "dd-tracing"
 version = "0.1.0"
 dependencies = [
- "datadog-apm 0.2.0 (git+https://github.com/DollyInc/datadog-apm-rust.git?branch=main)",
- "dd-tracing 0.1.0 (git+https://github.com/DollyInc/dd-tracing-rust.git?branch=main)",
- "rand",
- "serde",
- "serde_json",
- "slog",
- "slog-async",
- "slog-json",
- "tracing",
-]
-
-[[package]]
-name = "dd-tracing"
-version = "0.1.0"
-source = "git+https://github.com/DollyInc/dd-tracing-rust.git?branch=main#71651c4a47875aab4ba53daa73d21213c8aac77f"
-dependencies = [
- "datadog-apm 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "datadog-apm",
  "rand",
  "serde",
  "serde_json",
@@ -819,7 +789,6 @@ dependencies = [
  "mio 0.6.22",
  "pin-project-lite 0.1.11",
  "slab",
- "tokio-macros 0.2.6",
 ]
 
 [[package]]
@@ -840,19 +809,8 @@ dependencies = [
  "pin-project-lite 0.2.0",
  "signal-hook-registry",
  "slab",
- "tokio-macros 0.3.1",
+ "tokio-macros",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "tokio-macros"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e44da00bfc73a25f814cd8d7e57a68a5c31b74b3152a0a1d1f590c97ed06265a"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
