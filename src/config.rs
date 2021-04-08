@@ -11,7 +11,7 @@ pub struct Dd {
     pub host: String,
     #[serde(default = "default_port")]
     pub port: String,
-    #[serde(default= "deafult_buffer_flush_max_interval")]
+    #[serde(default= "default_buffer_flush_max_interval")]
     pub buffer_flush_max_interval: Duration,
 }
 
@@ -68,6 +68,6 @@ fn default_sample_rate() -> f32 {
     1f32
 }
 
-fn deafult_buffer_flush_max_interval() -> Duration {
+fn default_buffer_flush_max_interval() -> Duration {
     Duration::from_millis(200)
 }
