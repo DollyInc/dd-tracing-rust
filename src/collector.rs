@@ -84,6 +84,7 @@ impl Collector {
             service: config.dd.service.clone(),
             host: config.dd.host.clone(),
             port: config.dd.port.clone(),
+            buffer_flush_max_interval: config.dd.buffer_flush_max_interval.clone(),
             ..Default::default()
         };
         Self {
