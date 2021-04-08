@@ -61,7 +61,7 @@ The `Config` struct is set up to work with the `config` crate, and has a functio
 
 # Running DD Agent
 In order to submit logs to Datadog you must be running the DD agent. The DD agent is available as a Docker image.
-[Click Here](https://docs.datadoghq.com/agent/docker/?tab=standard) to see the official documentation of running a DD agent for running on various platforms..
+[Click Here](https://docs.datadoghq.com/agent/docker/?tab=standard) to see the official documentation of running a DD agent for running on various platforms.
 
 The standard command to get the Agent up and running locally will be the following
 
