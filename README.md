@@ -57,3 +57,25 @@ The `Config` struct is set up to work with the `config` crate, and has a functio
     tracing::info!(event = "bar");
   }
 ```
+
+
+# Running DD Agent
+In order to submit logs to Datadog you must be running the DD agent. The DD agent is available as a Docker image.
+[Click Here](https://docs.datadoghq.com/agent/docker/?tab=standard) to see the official documentation of running a DD agent for running on various platforms..
+
+The standard command to get the Agent up and running locally will be the following
+
+```
+docker run -d -v /var/run/docker.sock:/var/run/docker.sock:ro \
+              -v /proc/:/host/proc/:ro \
+              -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+              -p 127.0.0.1:8126:8126/tcp \
+              -e DD_API_KEY="<INSERT DD API KEY HERE>" \
+              -e DD_APM_ENABLED=true \
+              --name dd-agent-local\
+              gcr.io/datadoghq/agent:latest
+```
+
+In order to retrieve your `DD_API_KEY` go to [Datadog Account API Settings](https://app.datadoghq.com/account/settings#api)
+
+By default once your DD agent container is up and runing, the request for logs will be sent to the localhost address on port 8126
