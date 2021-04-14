@@ -1,3 +1,4 @@
+use core::time::Duration;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -10,6 +11,8 @@ pub struct Dd {
     pub host: String,
     #[serde(default = "default_port")]
     pub port: String,
+    #[serde(default= "default_buffer_flush_max_interval")]
+    pub buffer_flush_max_interval: Duration,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -63,4 +66,8 @@ fn default_level() -> String {
 
 fn default_sample_rate() -> f32 {
     1f32
+}
+
+fn default_buffer_flush_max_interval() -> Duration {
+    Duration::from_millis(200)
 }
