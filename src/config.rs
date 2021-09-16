@@ -1,7 +1,7 @@
 use core::time::Duration;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Dd {
     pub service: String,
@@ -11,8 +11,21 @@ pub struct Dd {
     pub host: String,
     #[serde(default = "default_port")]
     pub port: String,
-    #[serde(default= "default_buffer_flush_max_interval")]
+    #[serde(default = "default_buffer_flush_max_interval")]
     pub buffer_flush_max_interval: Duration,
+}
+
+impl Default for Dd {
+    fn default() -> Self {
+        Self {
+            service: String::default(),
+            env: String::default(),
+            version: String::default(),
+            host: default_host(),
+            port: default_port(),
+            buffer_flush_max_interval: default_buffer_flush_max_interval(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -22,7 +35,7 @@ pub struct Metadata {
     pub image: String,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Config {
     #[serde(default = "default_level")]
@@ -32,6 +45,18 @@ pub struct Config {
     pub sample_rate: f32,
     pub metadata: Metadata,
     pub dd: Dd,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            level: default_level(),
+            prefix: String::default(),
+            sample_rate: default_sample_rate(),
+            metadata: Metadata::default(),
+            dd: Dd::default(),
+        }
+    }
 }
 
 impl Config {
